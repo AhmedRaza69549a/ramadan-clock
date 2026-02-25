@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Ramadan Clock 2026</title>
+    <style>
+        /* Basic Clean Styling */
+        body { font-family: 'Arial', sans-serif; background-color: #1a1a1a; color: #ffffff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 50px auto; background: #2d2d2d; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #f39c12; font-size: 24px; }
+        .clock { font-size: 48px; font-weight: bold; margin: 20px 0; color: #f1c40f; }
+        .times { display: flex; justify-content: space-around; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; }
+        .label { font-size: 14px; color: #bdc3c7; }
+        .time-value { font-size: 20px; font-weight: bold; }
+        #location-name { font-style: italic; color: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="location-name">Detecting Location...</div>
+    <h1>Ramadan 2026 Countdown</h1>
+    <div id="main-timer" class="clock">00:00:00</div>
+    
+    <div class="times">
+        <div>
+            <div class="label">Sehri Ends</div>
+            <div id="sehri-time" class="time-value">--:--</div>
+        </div>
+        <div>
+            <div class="label">Iftar Starts</div>
+            <div id="iftar-time" class="time-value">--:--</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Get User Location and Fetch Data
+    async function initClock() {
+        try {
+            // Using a free IP-based location service for ease
+            const locRes = await fetch('https://ipapi.co/json/');
+            const locData = await locRes.json();
+            const city = locData.city;
+            const country = locData.country_name;
+            
+            document.getElementById('location-name').innerText = `${city}, ${country}`;
+
+            // Fetch Prayer Times
+            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=1`);
+            const data = await res.json();
+            const timings = data.data.timings;
+
+            document.getElementById('sehri-time').innerText = timings.Fajr;
+            document.getElementById('iftar-time').innerText = timings.Maghrib;
+
+            // Simple Clock Update
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('main-timer').innerText = now.toLocaleTimeString();
+            }, 1000);
+
+        } catch (error) {
+            document.getElementById('location-name').innerText = "Location Error. Please refresh.";
+        }
+    }
+
+    initClock();
+</script>
+
+</body>
+</html>
