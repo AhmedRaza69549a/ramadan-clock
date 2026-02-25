@@ -3,71 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Ramadan Clock 2026</title>
+    <title>Hanafi & Jafari Ramadan Alarm</title>
     <style>
-        /* Basic Clean Styling */
-        body { font-family: 'Arial', sans-serif; background-color: #1a1a1a; color: #ffffff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 50px auto; background: #2d2d2d; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #f39c12; font-size: 24px; }
-        .clock { font-size: 48px; font-weight: bold; margin: 20px 0; color: #f1c40f; }
-        .times { display: flex; justify-content: space-around; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; }
-        .label { font-size: 14px; color: #bdc3c7; }
+        body { font-family: 'Arial', sans-serif; background-color: #121212; color: #ffffff; text-align: center; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 450px; background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .fiqh-selector { margin-bottom: 20px; background: #252525; padding: 10px; border-radius: 10px; display: flex; justify-content: center; gap: 10px; }
+        select { background: #333; color: white; border: 1px solid #f39c12; padding: 5px; border-radius: 5px; }
+        .timer-box { background: #252525; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }
+        .clock { font-size: 45px; font-weight: bold; color: #f1c40f; }
+        .alarm-btn { background: #f39c12; color: black; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 20px; }
+        .alarm-btn.active { background: #27ae60; color: white; }
+        .times-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .time-card { background: #252525; padding: 15px; border-radius: 10px; }
+        .label { color: #888; font-size: 12px; margin-bottom: 5px; }
         .time-value { font-size: 20px; font-weight: bold; }
-        #location-name { font-style: italic; color: #95a5a6; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="location-name">Detecting Location...</div>
-    <h1>Ramadan 2026 Countdown</h1>
-    <div id="main-timer" class="clock">00:00:00</div>
+    <div id="location-name" style="font-size: 12px; color: #aaa; margin-bottom: 10px;">DETECTING...</div>
     
-    <div class="times">
-        <div>
-            <div class="label">Sehri Ends</div>
+    <div class="fiqh-selector">
+        <label>Select Fiqh:</label>
+        <select id="fiqh-choice">
+            <option value="1">Hanafi (Uni. Islamic Sciences)</option>
+            <option value="0">Jafari (Ithna-Ashari)</option>
+        </select>
+    </div>
+
+    <button id="alarm-toggle" class="alarm-btn">OFF: Click to Enable Alarm</button>
+    
+    <div class="timer-box">
+        <div id="next-label" style="font-size: 12px; color: #f1c40f; letter-spacing: 1px;">CURRENT TIME</div>
+        <div id="main-timer" class="clock">00:00:00</div>
+    </div>
+    
+    <div class="times-grid">
+        <div class="time-card">
+            <div class="label">SEHRI ENDS</div>
             <div id="sehri-time" class="time-value">--:--</div>
         </div>
-        <div>
-            <div class="label">Iftar Starts</div>
+        <div class="time-card">
+            <div class="label">IFTAR STARTS</div>
             <div id="iftar-time" class="time-value">--:--</div>
         </div>
     </div>
 </div>
 
+<audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
 <script>
-    // 1. Get User Location and Fetch Data
-    async function initClock() {
+    let alarmEnabled = false;
+    let currentTimings = {};
+    const audio = document.getElementById('alarm-sound');
+    const btn = document.getElementById('alarm-toggle');
+    const fiqhSelect = document.getElementById('fiqh-choice');
+
+    btn.addEventListener('click', () => {
+        alarmEnabled = !alarmEnabled;
+        btn.innerText = alarmEnabled ? "ON: Alarm is Active" : "OFF: Click to Enable Alarm";
+        btn.classList.toggle('active', alarmEnabled);
+        audio.play().then(() => audio.pause()); 
+    });
+
+    fiqhSelect.addEventListener('change', fetchTimes);
+
+    async function fetchTimes() {
+        let city = "Karachi", country = "Pakistan";
+        const method = fiqhSelect.value;
+
         try {
-            // Using a free IP-based location service for ease
-            const locRes = await fetch('https://ipapi.co/json/');
-            const locData = await locRes.json();
-            const city = locData.city;
-            const country = locData.country_name;
-            
-            document.getElementById('location-name').innerText = `${city}, ${country}`;
+            const loc = await fetch('https://ipapi.co/json/').then(r => r.json());
+            city = loc.city || city;
+            country = loc.country_name || country;
+            document.getElementById('location-name').innerText = `${city.toUpperCase()}, ${country.toUpperCase()}`;
 
-            // Fetch Prayer Times
-            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=1`);
+            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=${method}`);
             const data = await res.json();
-            const timings = data.data.timings;
+            currentTimings = data.data.timings;
 
-            document.getElementById('sehri-time').innerText = timings.Fajr;
-            document.getElementById('iftar-time').innerText = timings.Maghrib;
-
-            // Simple Clock Update
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('main-timer').innerText = now.toLocaleTimeString();
-            }, 1000);
-
-        } catch (error) {
-            document.getElementById('location-name').innerText = "Location Error. Please refresh.";
-        }
+            // Note: For Jafari, Imsak is often used for Sehri and Maghrib for Iftar
+            document.getElementById('sehri-time').innerText = currentTimings.Fajr;
+            document.getElementById('iftar-time').innerText = currentTimings.Maghrib;
+        } catch(e) { console.log("Fetch error"); }
     }
 
-    initClock();
-</script>
+    setInterval(() => {
+        const now = new Date();
+        const nowTime = now.toTimeString().slice(0, 5); 
+        document.getElementById('main-timer').innerText = now.toLocaleTimeString();
 
+        if (alarmEnabled && (nowTime === currentTimings.Fajr || nowTime === currentTimings.Maghrib) && now.getSeconds() === 0) {
+            audio.play();
+            alert("Ramadan Alert: It is time!");
+        }
+    }, 1000);
+
+    fetchTimes();
+</script>
 </body>
 </html>
